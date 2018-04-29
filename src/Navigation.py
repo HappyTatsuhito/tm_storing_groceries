@@ -39,6 +39,7 @@ class Navigation:
 #    def ScanCB(self,receive_msg):
 
     def BaseCB(self,receive_msg):
+        pose = receive_msg
         if pose.transforms[0].header.frame_id == 'odom':
             self.robot_pose_x = pose.transforms[0].transform.translation.x
             self.robot_pose_y = pose.transforms[0].transform.translation.y
@@ -48,6 +49,9 @@ class Navigation:
                 self.location_list.append([self.location_word,self.location_pose_x,self.location_pose_y,0])
             self.location_append_num += 1
             self.location_word = 'Null'
+        navigate_result = Bool()
+        navigate_result.data = True
+        self.navigation_result_pub.publish(navigate_result)
 
     def ReceiveLocation(self,receive_msg):
         self.location_word = receive_msg.data
@@ -105,6 +109,9 @@ class Navigation:
                       
             pro_dist_to_goal = dist_to_goal
         print "finish"
+        navigate_result = Bool()
+        navigate_result.data = True
+        self.navigation_result_pub.publish(navigate_result)
 
         
 if __name__ == '__main__':
