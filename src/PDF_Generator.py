@@ -46,6 +46,9 @@ class PDFGenerator:
         self.pdf_c.showPage()
 #        self.pdf_c.save()
         #os.system('mv /home/demulab/sample.pdf /USB_ROOT')
+        result = Bool()
+        result.data = True
+        self.pdf_result_pub.publish(result)
         print 'fin'
 
     def Append(self,*_):
@@ -57,6 +60,7 @@ class PDFGenerator:
         self.pdf_c.drawInlineImage(image, 5, image.size[1]-240)
         self.pdf_c.showPage()
         self.pdf_c.save()
+        self.pdf_result_pub.publish(result)
         print 'finish append'
 
 
