@@ -64,6 +64,7 @@ class StoringGroceries:
 
     def ObjectListCB(self,result_msg):
         self.object_list = result_msg.data.split(' ')
+        print self.object_list
         self.object_list_flg = True
         
     def ObjectGraspResultCB(self,result_msg):
@@ -73,6 +74,7 @@ class StoringGroceries:
         self.object_image_generate_result_flg = True
 
     def ObjectCountCB(self,result_msg):
+        print 'in'
         self.object_num = result_msg.data
 
     def ObjectPlaceCB(self,result_msg):
@@ -91,12 +93,13 @@ class StoringGroceries:
         subprocess.call(voice_cmd.strip().split(' '))
         time.sleep(3.0)
         voice_cmd = '/usr/bin/picospeaker %s' % 'Thank you for your help.'
-        subprocess.call(voicd_cmd.strip().split(' '))
+        subprocess.call(voice_cmd.strip().split(' '))
         time.sleep(3.0)
         twist_cmd = Twist()
         while self.front_laser_dist > 0.7 and not rospy.is_shutdown():
             print 'laser'
-            twist_cmd.linear.x = self.front_laser_dist - 0.3
+#            twist_cmd.linear.x = self.front_laser_dist - 0.3
+            twist_cmd.linear.x = 0.2
             twist_cmd.angular.z = 0
             self.cmd_vel_pub.publish(twist_cmd)
             rospy.sleep(0.1)
@@ -104,6 +107,7 @@ class StoringGroceries:
         self.cmd_vel_pub.publish(twist_cmd)
         image_req = Bool()
         image_req.data = True
+        print 'publish'
         self.object_image_generate_req_pub.publish(image_req)
         while self.object_image_generate_result_flg == False and not rospy.is_shutdown():
             print 'image generating'
@@ -122,14 +126,23 @@ class StoringGroceries:
         place.data = 'cupboard'
         self.navigation_memorize_pub.publish(place)
         while (self.pdf_result_flg == False or self.navigation_result_flg == False) and not rospy.is_shutdown():
-            print 'wait pdf create.'
+            print 'wait pdf create and memorize location.'
+            print 'pdf:', self.pdf_result_flg, 'navi', self.navigation_result_flg
             time.sleep(3.0)
         self.pdf_result_flg = False
+#        while self.navigation_result_flg == False and not rospy.is_shutdown():
+#            print 'navi', self.navigation_result_flg
+#            time.sleep(3.0)
         self.navigation_result_flg = False
         twist_cmd = Twist()
-        twist_cmd.angular.z = 5.0
+        twist_cmd.linear.x = -1.0
         self.cmd_vel_pub.publish(twist_cmd)
-        time.sleep(3)
+        time.sleep(6)
+        twist_cmd.linear.x = 0
+        self.cmd_vel_pub.publish(twist_cmd)
+        twist_cmd.angular.z = 2.0
+        self.cmd_vel_pub.publish(twist_cmd)
+        time.sleep(8)
         twist_cmd.angular.z = 0
         self.cmd_vel_pub.publish(twist_cmd)
         return 1
@@ -138,14 +151,16 @@ class StoringGroceries:
         print 'state1'
         count_req = Bool()
         count_req.data = True
-        while self.object_num <= 3 and not rospy.is_shutdown():
+        self.object_list_req_pub.publish(count_req)
+        while self.object_num < 3 and not rospy.is_shutdown():
+            print 'object_num', self.object_num
             twist_cmd = Twist()
-            twist_cmd.angular.z = 2.0
+            twist_cmd.angular.z = 1.0
             self.cmd_vel_pub.publish(twist_cmd)
             time.sleep(3)
             twist_cmd.angular.z = 0
             self.cmd_vel_pub.publish(twist_cmd)
-            self.object_count_req_pub.publish(count_req)
+            self.object_clist_req_pub.publish(count_req)
             time.sleep(1)
             print 'waiting for object_recognizer'
         self.object_num = -1
@@ -205,9 +220,9 @@ class StoringGroceries:
         self.navigation_result_flg = False
         count_req = Bool()
         count_req.data = True
-        while self.object_num <= 3 and not rospy.is_shutdown():
+        while self.object_num < 3 and not rospy.is_shutdown():
             twist_cmd = Twist()
-            twist_cmd.angular.z = 2.0
+            twist_cmd.angular.z = 1.0
             self.cmd_vel_pub.publish(twist_cmd)
             time.sleep(3)
             twist_cmd.angular.z = 0
