@@ -22,7 +22,7 @@ class Navigation:
         
         self.vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop',Twist,queue_size=10)
         self.navigation_result_pub = rospy.Publisher('/navigation/result',Bool,queue_size=1)
-        self.reset_pub = rospy.Publisher('reconfiguration/input',Bool,queue_size=10)
+        #self.reset_pub = rospy.Publisher('reconfiguration/input',Bool,queue_size=10)
 
         self.clear_costmap = rospy.ServiceProxy('move_base/clear_costmaps',std_srvs.srv.Empty)
 
@@ -39,25 +39,31 @@ class Navigation:
 #    def ScanCB(self,receive_msg):
 
     def BaseCB(self,receive_msg):
-        pose = receive_msg
-        if pose.transforms[0].header.frame_id == 'odom':
-            self.robot_pose_x = pose.transforms[0].transform.translation.x
-            self.robot_pose_y = pose.transforms[0].transform.translation.y
-            if self.location_word != 'Null':
-                self.location_pose = self.robot_pose_x
-                self.location_pose = self.robot_pose_y
-                self.location_list.append([self.location_word,self.location_pose_x,self.location_pose_y,0])
-            self.location_append_num += 1
-            self.location_word = 'Null'
-        navigate_result = Bool()
-        navigate_result.data = True
-        self.navigation_result_pub.publish(navigate_result)
+        try:
+            pose = receive_msg
+            if pose.transforms[0].header.frame_id == 'odom':
+                self.robot_pose_x = pose.transforms[0].transform.translation.x
+                self.robot_pose_y = pose.transforms[0].transform.translation.y
+                self.robot_pose_w = pose.transforms[0].transform.rotation.z
+                if self.location_word != 'Null':
+                    self.location_pose_x = self.robot_pose_x
+                    self.location_pose_y = self.robot_pose_y
+                    self.location_pose_w = self.robot_pose_w
+                    self.location_list.append([self.location_word,self.location_pose_x,self.location_pose_y,self.location_pose_w])
+                    navigate_result = Bool()
+                    navigate_result.data = True
+                    self.navigation_result_pub.publish(navigate_result)
+                self.location_append_num += 1
+                self.location_word = 'Null'
+        except AttributeError:
+            print 'error'
+            pass
 
     def ReceiveLocation(self,receive_msg):
         self.location_word = receive_msg.data
         print self.location_word
 
-    def NavigateToDestination(self,receive_msg):
+    def NavigateToDestination(self,destination):
         location_num = -1
         for location_num_i in range(len(self.location_list)):
             print location_num_i#test
@@ -79,20 +85,19 @@ class Navigation:
         ac.send_goal(goal);
         while not rospy.is_shutdown():
             print 'goal state is',ac.get_state()
-            if ac.get_state() == 1 and reset_flg == 1:
+            if ac.get_state() == 1:
                 print 'Got out of the obstacle'
-                rosoy.sleep(1)
+                rospy.sleep(1)
             if ac.get_state() == 3:
                 print "goal"
                 rospy.sleep(3)
                 result = Bool()
                 result.data = True
-                self.result_pub.publish(result)
+                self.navigation_result_pub.publish(result)
                 time.sleep(3)
                 break                        
             if ac.get_state() == 4:
                 print 'Buried in obstacles'
-                self.reset_pub.publish(1)
                 ac = actionlib.SimpleActionClient('move_base', MoveBaseAction)
                 if ac.wait_for_server(rospy.Duration(5)) == 1:
                     print "wait for action client rising up 1"
@@ -107,14 +112,15 @@ class Navigation:
                 goal.target_pose.pose.orientation = Quaternion(q[0],q[1],q[2],q[3])
                 ac.send_goal(goal);
                       
-            pro_dist_to_goal = dist_to_goal
+#            pro_dist_to_goal = dist_to_goal
         print "finish"
         navigate_result = Bool()
         navigate_result.data = True
-        self.navigation_result_pub.publish(navigate_result)
+#        self.navigation_result_pub.publish(navigate_result)
 
         
 if __name__ == '__main__':
     rospy.init_node('sg_navigation',anonymous=True)
     navigation = Navigation()
+    print 'Waiting'
     rospy.spin()
