@@ -47,6 +47,7 @@ class StoringGroceries:
         self.pdf_result_flg = False
         self.object_recog_flg = False
         self.object_list = []
+        self.target_list = []
         self.object_list_flg = False
         self.object_grasp_result_flg = False
         self.object_image_generate_result_flg = False

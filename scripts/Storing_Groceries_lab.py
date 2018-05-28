@@ -19,13 +19,9 @@ class StoringGroceries:
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel_mux/input/teleop',Twist,queue_size=1)
         self.navigation_memorize_pub = rospy.Publisher('/navigation/memorize_place',String,queue_size=1)
         self.navigation_command_pub = rospy.Publisher('/navigation/command_place',String,queue_size=1)
-        self.pdf_create_pub = rospy.Publisher('/pdf/create_req',Bool,queue_size=1)
-        self.pdf_append_first_pub = rospy.Publisher('/pdf/append/first_req',Bool,queue_size=1)
-        self.pdf_append_second_pub = rospy.Publisher('/pdf/append/second_req',Bool,queue_size=1)
         self.object_recog_req_pub = rospy.Publisher('/object/recog_req',String,queue_size=1)#searchの開始
         self.object_list_req_pub = rospy.Publisher('/object/list_req',Bool,queue_size=1)#objectのリストをもらう
         self.object_grasp_req_pub = rospy.Publisher('/object/grasp_req',String,queue_size=10)#manipulationの開始
-        self.object_image_generate_req_pub = rospy.Publisher('/object/image_generate_req',Bool,queue_size=1)#objectの画像を保存
         self.object_count_req_pub = rospy.Publisher('/object/count_req',Bool,queue_size=1)#objectの個数を要求
         self.changing_pose_pub = rospy.Publisher('/arm/changing_pose_req',String,queue_size=1)#manipulateしたあとの変形
         self.object_place_req_pub = rospy.Publisher('/object/place_req',Bool,queue_size=1)#objectを置く
@@ -33,23 +29,20 @@ class StoringGroceries:
         self.m6_pub = rospy.Publisher('/m6_controller/command',Float64,queue_size=1)
 
         self.laser_sub = rospy.Subscriber('/scan',LaserScan,self.LaserCB)        
-        self.pdf_res_sub = rospy.Subscriber('/pdf_result',Bool,self.pdf_resultCB)
         self.object_recog_res_sub = rospy.Subscriber('/object/recog_res',Bool,self.ObjectRecogResultCB)
         self.object_list_res_sub = rospy.Subscriber('/object/list_res',String,self.ObjectListCB)
         self.grasp_res_sub = rospy.Subscriber('/object/grasp_res',Bool,self.ObjectGraspResultCB)
-        self.object_image_generate_res_sub = rospy.Subscriber('/object/image_generate_res',Bool,self.ObjectImageGenerateResultCB)
         self.object_count_res_sub = rospy.Subscriber('/object/count_res',Int8,self.ObjectCountCB)
         self.object_place_res_sub = rospy.Subscriber('/object/place_res',Bool,self.ObjectPlaceCB)
         self.navigation_res_sub = rospy.Subscriber('/navigation/result',Bool,self.NavigationResultCB)
 
         self.min_laser_dist = 999.9
         self.front_laser_dist = 999.9
-        self.pdf_result_flg = False
         self.object_recog_flg = False
         self.object_list = []
+        self.target_list = []
         self.object_list_flg = False
         self.object_grasp_result_flg = False
-        self.object_image_generate_result_flg = False
         self.object_num = -1
         self.object_place_flg = False
         self.navigation_result_flg = False
@@ -61,9 +54,6 @@ class StoringGroceries:
         self.laser_dist = laser_scan.ranges
         self.min_laser_dist = min(laser_scan.ranges[180:540])
         self.front_laser_dist = laser_scan.ranges[359]
-
-    def getPdfResultCB(self,result_msg):
-        self.pdf_result_flg = True
 
     def getObjectRecogResultCB(self,result_msg):
         self.object_recog_flg = True
@@ -77,9 +67,6 @@ class StoringGroceries:
         
     def getObjectGraspResultCB(self,result_msg):
         self.object_grasp_result_flg = True
-
-    def getObjectImageGenerateResultCB(self,result_msg):
-        self.object_image_generate_result_flg = True
 
     def getObjectCountCB(self,result_msg):
         self.object_num = result_msg.data
@@ -95,7 +82,7 @@ class StoringGroceries:
         voice_cmd = '/usr/bin/picospeaker %s' %sentence
         subprocess.call(voice_cmd.strip().split(' '))
         
-    def inspectCupboard(self):#-----------------state 0
+    def inspectCupboard(self):#---------------------------------state 0
         print 'State 0'
         self.m6_angle.data = -0.8
         self.m6_pub.publish(self.m6_angle)
@@ -114,14 +101,6 @@ class StoringGroceries:
             time.sleep(0.5)
         self.navigation_result_flg = False
         rospy.sleep(1.0)
-        while self.front_laser_dist < 0.80 and not rospy.is_shutdown():
-            print 'Reverse'
-            self.twist_cmd.linear.x = -0.2
-            self.cmd_vel_pub.publish(self.twist_cmd)
-            rospy.sleep(0.1)
-        self.twist_cmd.linear.x = 0
-        self.cmd_vel_pub.publish(self.twist_cmd)
-        time.sleep(3.0)
         self.speak('I reached the cup board.')
         self.speak('Can you open the cup board door?')
         min_laser_index = self.laser_dist.index(self.min_laser_dist)
@@ -130,37 +109,6 @@ class StoringGroceries:
             time.sleep(1.0)
         rospy.sleep(2.0)        
         self.speak('Thank you for your help.')
-        self.m6_angle.data = 0.0
-        self.m6_pub.publish(self.m6_angle)
-        rospy.sleep(3.0)
-        image_req = Bool()
-        image_req.data = True
-        self.object_image_generate_req_pub.publish(image_req)
-        print 'Image Generating!'
-        while self.object_image_generate_result_flg == False and not rospy.is_shutdown():
-            time.sleep(0.5)
-        self.object_image_generate_result_flg = False
-        pdf_req = Bool()
-        pdf_req.data = True
-        self.pdf_create_pub.publish(pdf_req)
-        print 'PDF Create!'
-        while self.pdf_result_flg == False and not rospy.is_shutdown():
-            time.sleep(0.5)
-        self.pdf_result_flg = False
-        for i in range(2):
-            self.m6_angle.data = -0.4 * (i + 1)
-            self.m6_pub.publish(self.m6_angle)
-            rospy.sleep(3.0)
-            self.object_image_generate_req_pub.publish(image_req)
-            print 'Image Generating!'
-            while self.object_image_generate_result_flg == False and not rospy.is_shutdown():
-                time.sleep(0.5)
-            self.object_image_generate_result_flg = False
-            self.pdf_append_first_pub.publish(pdf_req)
-            print 'PDF Append!'
-            while self.pdf_result_flg == False and not rospy.is_shutdown():
-                time.sleep(0.5)
-            self.pdf_result_flg = False
         for i in range(1):
             self.twist_cmd.linear.x = -0.2
             self.cmd_vel_pub.publish(self.twist_cmd)
@@ -175,7 +123,7 @@ class StoringGroceries:
         self.cmd_vel_pub.publish(self.twist_cmd)
         return 1
     
-    def findTable(self):#-----------------------state 1
+    def findTable(self):#---------------------------------------state 1
         print 'State1'
         self.m6_angle.data = -0.8
         self.m6_pub.publish(self.m6_angle)
@@ -228,7 +176,7 @@ class StoringGroceries:
         self.speak('I found the table.')
         return 3
 
-    def approachTable(self):#-------------------state 2
+    def approachTable(self):#-----------------------------------state 2
         print 'State 2'
         place = String()
         place.data = 'table'
@@ -262,7 +210,7 @@ class StoringGroceries:
         self.twist_cmd.angular.z = 0
         return 3
 
-    def graspObject(self):#---------------------state 3
+    def graspObject(self):#-------------------------------------state 3
         print 'State 3'
         object_name = self.object_list[0]
         self.speak('I grasp the ' + object_name)
@@ -280,7 +228,7 @@ class StoringGroceries:
         rospy.sleep(1.0)
         return 4
     
-    def releaseObject(self):#-------------------state 4
+    def releaseObject(self):#-----------------------------------state 4
         print 'state 4'
         place = String()
         place.data = 'cupboard'
@@ -344,21 +292,6 @@ class StoringGroceries:
         pose_req.data = 'carry'
         self.changing_pose_pub.publish(pose_req)
         rospy.sleep(2.0)
-        image_req = Bool()
-        image_req.data = True
-        self.object_image_generate_req_pub.publish(image_req)
-        print 'Image Generating!'
-        while self.object_image_generate_result_flg == False and not rospy.is_shutdown():
-            time.sleep(0.5)
-        self.object_image_generate_result_flg = False
-        pdf_req = Bool()
-        pdf_req.data = True
-        self.pdf_append_second_pub.publish(pdf_req)
-        print 'PDF Appending!'
-        while self.pdf_result_flg == False and not rospy.is_shutdown():
-            time.sleep(0.5)
-        self.pdf_resutl_flg = False
-        rospy.sleep(1.0)
         return 2
 
 if __name__ == '__main__':
