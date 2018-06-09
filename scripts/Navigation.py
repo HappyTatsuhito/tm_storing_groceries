@@ -36,7 +36,6 @@ class Navigation:
         self.location_pose_y = 0
         self.location_append_num = 0
 
-#    def ScanCB(self,receive_msg):
 
     def BaseCB(self,receive_msg):
         try:
@@ -46,10 +45,18 @@ class Navigation:
                 self.robot_pose_y = pose.transforms[0].transform.translation.y
                 self.robot_pose_w = pose.transforms[0].transform.rotation.z
                 if self.location_word != 'Null':
+                    if self.location_word == 'cupboard':
+                        self.location_list = []
                     self.location_pose_x = self.robot_pose_x
                     self.location_pose_y = self.robot_pose_y
                     self.location_pose_w = self.robot_pose_w
+                    #if self.location_word == 'table':
+                    if self.location_pose_w > 0:
+                        self.location_pose_w += 1.5 * self.location_pose_w * self.location_pose_w * self.location_pose_w
+                    else :
+                        self.location_pose_w += 1.5 * self.location_pose_w * self.location_pose_w * self.location_pose_w
                     self.location_list.append([self.location_word,self.location_pose_x,self.location_pose_y,self.location_pose_w])
+                    print self.location_word, ' : ', self.location_pose_w
                     navigate_result = Bool()
                     navigate_result.data = True
                     self.navigation_result_pub.publish(navigate_result)
@@ -61,7 +68,7 @@ class Navigation:
 
     def ReceiveLocation(self,receive_msg):
         self.location_word = receive_msg.data
-        print self.location_word
+#        print self.location_word
 
     def NavigateToDestination(self,destination):
         location_num = -1

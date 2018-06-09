@@ -8,8 +8,8 @@ sleep 7s
 #sleep 7s
 xterm -geometry 80x5+0+620 -e "/opt/ros/kinetic/bin/roslaunch e_manipulation motor_setup.launch"&
 sleep 7s
-xterm -geometry 80x5+600+220 -e "/opt/ros/kinetic/bin/rosrun tm_storing_groceries Navigation.py" &
-sleep 2s
+#xterm -geometry 80x5+600+220 -e "/opt/ros/kinetic/bin/rosrun tm_storing_groceries Navigation.py" &
+#sleep 2s
 #xterm -geometry 80x5+600+320 -e "/opt/ros/kinetic/bin/rosrun tm_storing_groceries PDF_Generator.py" &
 #sleep 2s
 xterm -geometry 80x5+0+320 -e "/opt/ros/kinetic/bin/rosrun e_object_recognizer object_recognizer.py" &
